@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // allowing images from specific websites
+  images: {
+    domains: ['lh3.googleusercontent.com'], // used in NavBar.tsx
+  },
 };
 
 export default nextConfig;
