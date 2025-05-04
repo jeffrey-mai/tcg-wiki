@@ -1,12 +1,11 @@
 
 export default function Page() {
+
   return (
-    <main>
-      <div>
-        <div className="h-[50vh] flex justify-center items-center">
-          <p className="">Cards</p>
-        </div>
+    <div>
+      <div className="h-[95vh] flex justify-center items-center">
+        Cards
       </div>
-    </main>
+    </div>
   )
 }

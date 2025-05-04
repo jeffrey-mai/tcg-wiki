@@ -118,7 +118,7 @@ export default function Home() {
               duration: 0.8,
               ease: "easeInOut",
             }}
-            className="text-slate-300 text-base md:text-lg max-w-xl mb-6"
+            className="text-slate-300 text-lg max-w-xl mb-9"
           >
             Build decks, explore cards, and play any trading card game!
           </motion.p>
@@ -130,7 +130,7 @@ export default function Home() {
               duration: 0.5,
               ease: "easeInOut",
             }}
-            className="bg-white text-black text-lg md:text-xl rounded-xl py-2 px-6 hover:bg-gray-200 transition"
+            className="bg-white text-black hover:bg-cyan-200 hover:font-medium text-lg rounded-xl py-2 px-6 transition-colors ease-in-out duration-300"
           >
             Sign up now!
           </motion.button>
