@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       'lh3.googleusercontent.com', 
       "en.cf-vanguard.com",
       "cdn-icons-png.flaticon.com",
+      "i.imgur.com",
     ],
   },
 };

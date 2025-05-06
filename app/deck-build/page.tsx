@@ -51,6 +51,8 @@ export default function Page() {
     )
   })
 
+  const [dropDownStatus, setDropDownStatus] = useState(false);
+  const [activeTab, setActiveTab] = useState("main");
   const [input, setInput] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,67 +86,117 @@ export default function Page() {
         </div>
         <div className="flex flex-col justify-between h-full w-[30%] border border-white">
           <div className="max-h-[20%] p-1">
-            <h2>Name of Deck *icon*</h2>
-            <div className="grid grid-cols-4 h-[82%] w-full border border-white overflow-y-hidden">
-              <CardContainer className="inter-var">
-                <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                <CardItem translateZ="100" className="w-full">
-                  <Image
-                      src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png"
-                      height="300"
-                      width="50"
-                      className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                      alt="thumbnail"
-                    />
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
-              <CardContainer className="inter-var">
-                <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                <CardItem translateZ="100" className="w-full">
-                  <Image
-                      src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png"
-                      height="300"
-                      width="50"
-                      className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                      alt="thumbnail"
-                    />
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
-              <CardContainer className="inter-var">
-                <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                <CardItem translateZ="100" className="w-full">
-                  <Image
-                      src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png"
-                      height="300"
-                      width="50"
-                      className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                      alt="thumbnail"
-                    />
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
-              <CardContainer className="inter-var">
-                <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                <CardItem translateZ="100" className="w-full">
-                  <Image
-                      src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png"
-                      height="300"
-                      width="50"
-                      className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                      alt="thumbnail"
-                    />
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
+            <div className="flex justify-between items-center">
+              <div className="w-[88%] text-left">
+                <button
+                  onClick={() => setDropDownStatus(!dropDownStatus)}
+                  className="flex justify-between items-center bg-white text-black w-full px-4 py-2 hover:cursor-pointer rounded-md"
+                >
+                  <p>Name of Deck</p>
+                  {
+                    dropDownStatus ? 
+                      <Image className="rotate-180" src="/up-arrow.png" height="20" width="20" alt="up-arrow logo" />
+                    :
+                      <Image src="/up-arrow.png" height="20" width="20" alt="up-arrow logo" />
+                  }
+                </button>
+                {dropDownStatus && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                    <ul className="py-1 text-gray-700">
+                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Option 1</li>
+                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Option 2</li>
+                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Option 3</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mx-1" src="/editing.png" height="0" width="0" alt="edit logo" />
+              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer" src="/plus.png" height="0" width="0" alt="create logo" />
+            </div>
+            <div>
+              <Image
+                src="https://i.imgur.com/vJmy5qL.png"
+                height="70"
+                width="70"
+                alt="deck logo"
+              />
             </div>
           </div>
-          <div className="flex flex-col max-h-[80%] p-1">
-            <h2>Main Deck |# Grade 3, # Grade 2, # Grade 1, # Grade 0|</h2>
-            <div className="grid grid-cols-3 h-full w-full pt-1 border border-white overflow-y-auto overflow-x-hidden">
-              {/* MAKE NEW SET OF CARDS FOR MAIN DECK */}
-              {cards}
+          <div className="flex flex-col min-h-[80%] max-h-[80%] p-1">
+            <div className="flex">
+              <h2
+                className={`${activeTab === "main" ? "border-b-transparent border-white bg-cyan-200 text-black" : "hover:bg-slate-800"} border py-1 px-3 z-10 hover:cursor-pointer transition-colors ease-in-out rounded-tl-lg`}
+                onClick={() => setActiveTab("main")}
+              >
+                Main Deck
+              </h2>
+              <h2
+                className={`${activeTab === "extra" ? "border-b-transparent border-white bg-cyan-200 text-black" : "hover:bg-slate-800"} border border-l-0 py-1 px-3 hover:cursor-pointer transition-colors ease-in-out rounded-tr-lg`}
+                onClick={() => setActiveTab("extra")}
+              >
+                Extra Deck
+              </h2>
+            </div>
+            <div className="-mt-px grid grid-cols-3 h-full w-full pt-1 border border-white overflow-y-auto overflow-x-hidden">
+              {
+                activeTab === "main" ? 
+                  cards
+                :
+                  (<>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                  </>)
+              }
             </div>
           </div>
         </div>
