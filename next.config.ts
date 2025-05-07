@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       "en.cf-vanguard.com",
       "cdn-icons-png.flaticon.com",
       "i.imgur.com",
+      "i.pinimg.com",
     ],
   },
 };
