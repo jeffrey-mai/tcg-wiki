@@ -25,7 +25,7 @@ const NavBarClient = ({ session }: { session: Session | null }) => {
         <button className="NavBarButton">Simulation</button>
       </div>
       <div className="flex justify-end w-auto">
-        <button className="NavBarButton mr-3 text-neutral-300">Dark/Light</button>
+        {/* <button className="NavBarButton mr-3 text-neutral-300">Dark/Light</button> */}
         {!session ? 
           <button
             className="bg-white text-black hover:invert border-2 border-black cursor-pointer rounded-xl px-[8px] py-[4px] transition-colors ease-in-out"

@@ -2,17 +2,21 @@
 
 import { CardBody, CardContainer, CardItem } from "@/components/ui/3d-card";
 import { PlaceholdersAndVanishInput } from "@/components/ui/placeholders-and-vanish-input";
+import { Cards } from "@/types";
+import { hover } from "motion";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Page() {
+  const [hoveredCard, setHoveredCard] = useState<Cards>();
   const [showPopup, setShowPopup] = useState(false);
   const [PopupPos, setPopupPos] = useState({ top: 0, left: 0});
   const popupRef = useRef<HTMLDivElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (card: Cards) => {
     timeoutRef.current = setTimeout(() => {
+      setHoveredCard(card);
       setShowPopup(true);
     }, 750); // 0.5 second delay
   };
@@ -39,57 +43,10 @@ export default function Page() {
     setPopupPos({ top, left });
   }
 
-  const cards = [
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png",
-    "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_001.png"
-  ].map((ele, i) => {
-    return (
-      <CardContainer key={i} className="inter-var">
-        <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-        <CardItem translateZ="100" className="w-full">
-          <Image
-              src={ele}
-              height="300"
-              width="300"
-              className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-              alt="thumbnail"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              onMouseMove={handleMouseMove}
-            />
-          </CardItem>
-        </CardBody>
-      </CardContainer>
-    )
-  })
-
   const [searchResult, setSearchResult] = useState("");
   const [input, setInput] = useState("");
   const [dropDownStatus, setDropDownStatus] = useState(false);
+  const [cards, setCards] = useState<Cards[]>();
   const [currentDeck, setCurrentDeck] = useState("");
   const [activeTab, setActiveTab] = useState("main");
 
@@ -105,6 +62,20 @@ export default function Page() {
     }
   };
 
+  useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        const res = await fetch("/api/cards");
+        const data = await res.json();
+        setCards(data);
+      } catch (error) {
+        console.error("Failed to fetch cards:", error);
+      }
+    }
+
+    fetchCards();
+  }, []);
+
   return (
     <div className="flex flex-col justify-center mt-[24px]">
       {showPopup && (
@@ -113,14 +84,20 @@ export default function Page() {
           className="fixed w-[30%] z-50 p-2 bg-gray-800 text-white rounded shadow-lg text-sm pointer-events-none"
           style={{ top: PopupPos.top + 10, left: PopupPos.left + 10 }}
         >
-          <h2 className="text-center font-bold mb-1">Dualmajestar, Astroea=Bico Stella</h2>
-          <p>
-            [AUTO](VC):At the beginning of your main phase, if you did not ride this turn, [COST][discard a card from hand], choose a card with the same card name as this unit from your bind zone, ride it as [Stand], and if you rode a card, activate persona ride.
-            [AUTO](VC):When this unit attacks a vanguard, [COST][Counter-Blast 1 & Soul-Blast 3], bind all [Critical] triggers and cards with &quot;Astroea&quot; in their card names [Soul-Blast] for this cost, and perform all of the following according to the total number of [Critical] triggers and cards with &quot;Astroea&quot; in their card names in your bind zone.
-            <br />・One or more cards - Choose one of your opponent&apos;s rear-guards, retire it, and all of your front row units get [Power] +5000 until end of turn.
-            <br />・Three or more cards - This unit gets [Critical] +1/drive +1 until end of that battle.
-            <br />・Five or more cards - Choose one of your rear-guards, and [Stand] it.
-          </p>
+          {
+            hoveredCard ? 
+              (
+                <>
+                  <h2 className="text-center font-bold mb-1">{hoveredCard.name}</h2>
+                  <p>{hoveredCard.effect}</p>
+                  <p>{hoveredCard.power}</p>
+                  <p>{hoveredCard.grade}</p>
+                  <p>{hoveredCard.nation}</p>
+                </>
+              )
+            :
+              null
+          }
         </div>
       )}
       <div className="flex justify-between items-center w-7/10 pl-[24px] pr-6">
@@ -144,7 +121,31 @@ export default function Page() {
       </div>
       <div className="h-[85vh] flex justify-center items-center mt-[10px] mr-[24px] pb-[24px]">
         <div className="grid grid-cols-5 h-full w-7/10 mr-5 ml-[24px] px-[10px] pt-1 overflow-y-auto">
-          {cards}
+          { 
+            cards ?
+              cards.map((ele, i) => {
+                return (
+                  <CardContainer key={i} className="inter-var">
+                    <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                    <CardItem translateZ="100" className="w-full">
+                      <Image
+                          src={ele.image_url[0]}
+                          height="300"
+                          width="300"
+                          className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                          alt="thumbnail"
+                          onMouseEnter={() => handleMouseEnter(ele)}
+                          onMouseLeave={handleMouseLeave}
+                          onMouseMove={handleMouseMove}
+                        />
+                      </CardItem>
+                    </CardBody>
+                  </CardContainer>
+                )
+              })
+            :
+            null
+          }
         </div>
         <div className="flex flex-col justify-between h-full w-[30%] border border-white rounded-lg">
           <div className="flex flex-col min-h-[25%] p-1">
@@ -248,7 +249,56 @@ export default function Page() {
             <div className="-mt-px grid grid-cols-3 h-full w-full pt-1 border-t-1 border-white rounded-b-lg overflow-y-auto overflow-x-hidden">
               {
                 activeTab === "main" ? 
-                  cards
+                  (<>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                            onMouseEnter={() => setShowPopup(true)}
+                            onMouseLeave={() => setShowPopup(false)}
+                            onMouseMove={handleMouseMove}
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                            onMouseEnter={() => setShowPopup(true)}
+                            onMouseLeave={() => setShowPopup(false)}
+                            onMouseMove={handleMouseMove}
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                    <CardContainer className="inter-var">
+                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                      <CardItem translateZ="100" className="w-full">
+                        <Image
+                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
+                            height="300"
+                            width="300"
+                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                            alt="thumbnail"
+                            onMouseEnter={() => setShowPopup(true)}
+                            onMouseLeave={() => setShowPopup(false)}
+                            onMouseMove={handleMouseMove}
+                          />
+                        </CardItem>
+                      </CardBody>
+                    </CardContainer>
+                  </>)
                 :
                   (<>
                     <CardContainer className="inter-var">
