@@ -3,7 +3,6 @@
 import { CardBody, CardContainer, CardItem } from "@/components/ui/3d-card";
 import { PlaceholdersAndVanishInput } from "@/components/ui/placeholders-and-vanish-input";
 import { Cards } from "@/types";
-import { hover } from "motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
@@ -18,7 +17,7 @@ export default function Page() {
     timeoutRef.current = setTimeout(() => {
       setHoveredCard(card);
       setShowPopup(true);
-    }, 750); // 0.5 second delay
+    }, 750); // 0.75 second delay
   };
 
   const handleMouseLeave = () => {
@@ -62,6 +61,10 @@ export default function Page() {
     }
   };
 
+  const handleCancelSearch = () => {
+    setSearchResult("");
+  };
+
   useEffect(() => {
     const fetchCards = async () => {
       try {
@@ -76,8 +79,22 @@ export default function Page() {
     fetchCards();
   }, []);
 
+  useEffect(() => {
+    const fetchSearchCards = async () => {
+      try {
+        const res = await fetch(`/api/cards/${searchResult}`);
+        const data = await res.json();
+        setCards(data);
+      } catch (error) {
+        console.error("Failed to fetch cards:", error);
+      }
+    }
+
+    fetchSearchCards();
+  }, [searchResult]);
+
   return (
-    <div className="flex flex-col justify-center mt-[24px]">
+    <div className="flex flex-col justify-center mt-[24px] w-full">
       {showPopup && (
         <div
           ref={popupRef}
@@ -89,7 +106,7 @@ export default function Page() {
               (
                 <>
                   <h2 className="text-center font-bold mb-1">{hoveredCard.name}</h2>
-                  <p>{hoveredCard.effect}</p>
+                  <p dangerouslySetInnerHTML={{ __html: hoveredCard.effect }} />
                   <p>{hoveredCard.power}</p>
                   <p>{hoveredCard.grade}</p>
                   <p>{hoveredCard.nation}</p>
@@ -108,7 +125,20 @@ export default function Page() {
             onSubmit={onSubmit}
           />
           {
-            searchResult !== "" ? <p className="text-white whitespace-nowrap overflow-hidden">Current search: {searchResult}</p> : <></>
+            searchResult !== "" ? 
+              <div className="flex items-center justify-between w-full">
+                <p className="text-white whitespace-nowrap overflow-hidden">
+                  Current search: {searchResult}
+                </p>
+                <p 
+                  className="px-1 mr-2 text-lg text-zinc-400 cursor-pointer hover:text-white transition-colors duration-300"
+                  onClick={handleCancelSearch}
+                >
+                  x
+                </p>
+              </div>
+              : 
+              <></>
           }
         </div>
         <Image
@@ -144,7 +174,7 @@ export default function Page() {
                 )
               })
             :
-            null
+              null
           }
         </div>
         <div className="flex flex-col justify-between h-full w-[30%] border border-white rounded-lg">
