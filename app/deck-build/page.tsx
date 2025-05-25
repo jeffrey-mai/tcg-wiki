@@ -3,6 +3,7 @@
 import { CardBody, CardContainer, CardItem } from "@/components/ui/3d-card";
 import { PlaceholdersAndVanishInput } from "@/components/ui/placeholders-and-vanish-input";
 import { Cards } from "@/types";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,6 +13,7 @@ export default function Page() {
   const [PopupPos, setPopupPos] = useState({ top: 0, left: 0});
   const popupRef = useRef<HTMLDivElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { data: session } = useSession();
 
   const handleMouseEnter = (card: Cards) => {
     timeoutRef.current = setTimeout(() => {
@@ -44,9 +46,13 @@ export default function Page() {
 
   const [searchResult, setSearchResult] = useState("");
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const [dropDownStatus, setDropDownStatus] = useState(false);
   const [cards, setCards] = useState<Cards[]>();
   const [currentDeck, setCurrentDeck] = useState("");
+  const [decks, setDecks] = useState({});
+  const [newDeckName, setNewDeckName] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("main");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,8 +61,7 @@ export default function Page() {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(input + " submitted");
-    if(input !== ""){
+    if(input.trim() !== ""){
       setSearchResult(input);
     }
   };
@@ -64,6 +69,24 @@ export default function Page() {
   const handleCancelSearch = () => {
     setSearchResult("");
   };
+
+  const handleSaveDeckName = async () => {
+    try {
+      const res = await fetch("/api/users", {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ currentDeck: currentDeck, newDeckName: newDeckName, email: session?.user?.email })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.error("Failed to change deck name:", error);
+    }
+
+    setIsEditing(false);
+  }
 
   useEffect(() => {
     const fetchCards = async () => {
@@ -78,6 +101,31 @@ export default function Page() {
 
     fetchCards();
   }, []);
+
+  useEffect(() => {
+    const fetchUserDecks = async () => {
+      if(session){
+        try {
+          const res = await fetch(`/api/users/${session.user?.email}`);
+          const data = await res.json();
+          setDecks(data[0].decks.cardfight_vanguard);
+          setCurrentDeck(Object.keys(data[0].decks.cardfight_vanguard)[0]);
+        } catch (error) {
+          console.error("Failed to fetch cards:", error);
+        }
+      }
+    }
+
+    fetchUserDecks();
+  }, [session, isEditing]);
+
+  useEffect(() => {
+    if(isEditing && inputRef.current) {
+      setNewDeckName(currentDeck);
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   useEffect(() => {
     const fetchSearchCards = async () => {
@@ -183,9 +231,21 @@ export default function Page() {
               <div className="flex w-[84%] text-left">
                 <button
                   onClick={() => setDropDownStatus(!dropDownStatus)}
+                  onBlur={() => setDropDownStatus(false)}
                   className={`${dropDownStatus && "rounded-b-none"} flex justify-between items-center bg-white text-black w-full px-4 py-2 hover:cursor-pointer rounded-md`}
                 >
-                  <p>Name of Deck</p>
+                  {isEditing ? (
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={newDeckName}
+                      onChange={(e) => setNewDeckName(e.target.value)}
+                      onBlur={() => handleSaveDeckName()}
+                      className="w-full mr-2"
+                    />
+                  ) : (
+                    <p>{currentDeck}</p>
+                  )}
                   {
                     dropDownStatus ? 
                       <Image className="rotate-180" src="/up-arrow.png" height="15" width="15" alt="up-arrow logo" />
@@ -194,16 +254,18 @@ export default function Page() {
                   }
                 </button>
                 {dropDownStatus && (
-                <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
+                  <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
                     <ul className="py-1 text-gray-700">
-                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Deck 1</li>
-                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Deck 2</li>
-                      <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Deck 3</li>
+                      {
+                        Object.keys(decks).map((decks, i) => {
+                          return <li key={i} className="px-4 py-2 hover:bg-gray-100 cursor-pointer">{decks}</li>
+                        })
+                      }
                     </ul>
                   </div>
                 )}
               </div>
-              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mx-1" src="/editing.png" height="0" width="0" alt="edit logo" />
+              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mx-1" src="/editing.png" onClick={() => setIsEditing(true)} height="0" width="0" alt="edit logo" />
               <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mr-1" src="/plus.png" height="0" width="0" alt="create logo" />
               <Image className="invert h-[20px] w-[20px] hover:cursor-pointer" src="/trash.png" height="0" width="0" alt="delete logo" />
             </div>

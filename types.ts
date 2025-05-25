@@ -1,7 +1,3 @@
-export interface DeckBuildID {
-  params: { id: string };
-}
-
 export interface Cards {
   name: string;
   type: string;

@@ -1,7 +1,6 @@
-import { DeckBuildID } from "@/types";
 
-export default function Page(props: DeckBuildID) {
-  const { id } = props.params;
+export default function Page({ params }: { params: { id: string } }) {
+  const { id } = params;
   
   return (
     <main>
