@@ -14,10 +14,20 @@ export default function Page() {
   const popupRef = useRef<HTMLDivElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { data: session } = useSession();
+  const [searchResult, setSearchResult] = useState("");
+  const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropDownStatus, setDropDownStatus] = useState(false);
+  const [cards, setCards] = useState<Cards[]>();
+  const [currentDeck, setCurrentDeck] = useState<{ name: string, list: Cards[] }>({ name: "", list: [] });
+  const [decks, setDecks] = useState({});
+  const [newDeckName, setNewDeckName] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("main");
 
   const handleMouseEnter = (card: Cards) => {
+    setHoveredCard(card);
     timeoutRef.current = setTimeout(() => {
-      setHoveredCard(card);
       setShowPopup(true);
     }, 750); // 0.75 second delay
   };
@@ -44,18 +54,7 @@ export default function Page() {
     setPopupPos({ top, left });
   }
 
-  const [searchResult, setSearchResult] = useState("");
-  const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dropDownStatus, setDropDownStatus] = useState(false);
-  const [cards, setCards] = useState<Cards[]>();
-  const [currentDeck, setCurrentDeck] = useState("");
-  const [decks, setDecks] = useState({});
-  const [newDeckName, setNewDeckName] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState("main");
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
   };
 
@@ -70,22 +69,59 @@ export default function Page() {
     setSearchResult("");
   };
 
+  const handleAddCard = (card: Cards) => {
+    setCurrentDeck((prev) => ({
+      ...prev,
+      list: [...(prev.list || []), card]
+    }))
+  }
+  
   const handleSaveDeckName = async () => {
+    setIsEditing(false);
+    if(currentDeck.name !== newDeckName){
+      try {
+        const res = await fetch("/api/users", {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentDeck: currentDeck.name, newDeckName: newDeckName, email: session?.user?.email })
+        });
+        const data = await res.json();
+        return data;
+      } catch (error) {
+        console.error("Failed to change deck name:", error);
+      }
+    } else {
+      console.log("No changes to deck name");
+    }
+  }
+
+  const handleCreateDeck = async () => {
     try {
       const res = await fetch("/api/users", {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ currentDeck: currentDeck, newDeckName: newDeckName, email: session?.user?.email })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email })
+      });
+      const data = await res.json();
+      console.log(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to create new deck:", error);
+    }
+  }
+
+  const handleDeleteDeck = async () => {
+    try {
+      const res = await fetch("/api/users", {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email, deckName: currentDeck.name })
       });
       const data = await res.json();
       return data;
     } catch (error) {
-      console.error("Failed to change deck name:", error);
+      console.error("Failed to create new deck:", error);
     }
-
-    setIsEditing(false);
   }
 
   useEffect(() => {
@@ -109,7 +145,11 @@ export default function Page() {
           const res = await fetch(`/api/users/${session.user?.email}`);
           const data = await res.json();
           setDecks(data[0].decks.cardfight_vanguard);
-          setCurrentDeck(Object.keys(data[0].decks.cardfight_vanguard)[0]);
+          setCurrentDeck((prev) => {
+            prev.name = Object.keys(data[0].decks.cardfight_vanguard)[0];
+            prev.list = data[0].decks.cardfight_vanguard[0];
+            return prev;
+          });
         } catch (error) {
           console.error("Failed to fetch cards:", error);
         }
@@ -121,7 +161,7 @@ export default function Page() {
 
   useEffect(() => {
     if(isEditing && inputRef.current) {
-      setNewDeckName(currentDeck);
+      setNewDeckName(currentDeck.name);
       inputRef.current.focus();
       inputRef.current.select();
     }
@@ -169,7 +209,7 @@ export default function Page() {
         <div className="flex items-center w-[97%] ml-8">
           <PlaceholdersAndVanishInput
             placeholders={["Search for any card!"]}
-            onChange={handleChange}
+            onChange={handleInputChange}
             onSubmit={onSubmit}
           />
           {
@@ -215,6 +255,7 @@ export default function Page() {
                           onMouseEnter={() => handleMouseEnter(ele)}
                           onMouseLeave={handleMouseLeave}
                           onMouseMove={handleMouseMove}
+                          onClick={() => handleAddCard(ele)}
                         />
                       </CardItem>
                     </CardBody>
@@ -234,18 +275,20 @@ export default function Page() {
                   onBlur={() => setDropDownStatus(false)}
                   className={`${dropDownStatus && "rounded-b-none"} flex justify-between items-center bg-white text-black w-full px-4 py-2 hover:cursor-pointer rounded-md`}
                 >
-                  {isEditing ? (
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={newDeckName}
-                      onChange={(e) => setNewDeckName(e.target.value)}
-                      onBlur={() => handleSaveDeckName()}
-                      className="w-full mr-2"
-                    />
-                  ) : (
-                    <p>{currentDeck}</p>
-                  )}
+                  {
+                    isEditing ? (
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={newDeckName}
+                        onChange={(e) => setNewDeckName(e.target.value)}
+                        onBlur={() => handleSaveDeckName()}
+                        className="w-full mr-2"
+                      />
+                    ) : (
+                      <p>{currentDeck.name}</p>
+                    )
+                  }
                   {
                     dropDownStatus ? 
                       <Image className="rotate-180" src="/up-arrow.png" height="15" width="15" alt="up-arrow logo" />
@@ -253,21 +296,23 @@ export default function Page() {
                       <Image src="/up-arrow.png" height="15" width="15" alt="up-arrow logo" />
                   }
                 </button>
-                {dropDownStatus && (
-                  <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
-                    <ul className="py-1 text-gray-700">
-                      {
-                        Object.keys(decks).map((decks, i) => {
-                          return <li key={i} className="px-4 py-2 hover:bg-gray-100 cursor-pointer">{decks}</li>
-                        })
-                      }
-                    </ul>
-                  </div>
-                )}
+                {
+                  dropDownStatus && (
+                    <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
+                      <ul className="py-1 text-gray-700">
+                        {
+                          Object.keys(decks).map((decks, i) => {
+                            return <li key={i} className="px-4 py-2 hover:bg-gray-100 cursor-pointer">{decks}</li>
+                          })
+                        }
+                      </ul>
+                    </div>
+                  )
+                }
               </div>
-              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mx-1" src="/editing.png" onClick={() => setIsEditing(true)} height="0" width="0" alt="edit logo" />
-              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer mr-1" src="/plus.png" height="0" width="0" alt="create logo" />
-              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer" src="/trash.png" height="0" width="0" alt="delete logo" />
+              <Image className="invert h-[20px] w-[20px] mx-1 hover:cursor-pointer" src="/editing.png" onClick={() => setIsEditing(true)} height="0" width="0" alt="edit logo" />
+              <Image className="invert h-[20px] w-[20px] mr-1 hover:cursor-pointer" src="/plus.png" onClick={handleCreateDeck} height="0" width="0" alt="create logo" />
+              <Image className="invert h-[20px] w-[20px] hover:cursor-pointer" src="/trash.png" onClick={handleDeleteDeck} height="0" width="0" alt="delete logo" />
             </div>
             <div className="flex justify-center items-center h-full">
               <Image
@@ -341,123 +386,53 @@ export default function Page() {
             <div className="-mt-px grid grid-cols-3 h-full w-full pt-1 border-t-1 border-white rounded-b-lg overflow-y-auto overflow-x-hidden">
               {
                 activeTab === "main" ? 
-                  (<>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_004.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                  </>)
+                  currentDeck.list?.map((ele, i) => {
+                    if(ele.type !== "G Unit"){
+                      return (
+                        <CardContainer key={i} className="inter-var">
+                          <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                          <CardItem translateZ="100" className="w-full">
+                            <Image
+                                src={ele.image_url[0]}
+                                height="300"
+                                width="300"
+                                className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                                alt="thumbnail"
+                                onMouseEnter={() => handleMouseEnter(ele)}
+                                onMouseLeave={handleMouseLeave}
+                                onMouseMove={handleMouseMove}
+                                onClick={() => null}
+                              />
+                            </CardItem>
+                          </CardBody>
+                        </CardContainer>
+                      )
+                    }
+                  })
                 :
-                  (<>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                    <CardContainer className="inter-var">
-                      <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                      <CardItem translateZ="100" className="w-full">
-                        <Image
-                            src="https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/dzbt07/dzbt07_sec05.png"
-                            height="300"
-                            width="300"
-                            className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                            alt="thumbnail"
-                            onMouseEnter={() => setShowPopup(true)}
-                            onMouseLeave={() => setShowPopup(false)}
-                            onMouseMove={handleMouseMove}
-                          />
-                        </CardItem>
-                      </CardBody>
-                    </CardContainer>
-                  </>)
+                  currentDeck.list?.map((ele, i) => {
+                    if(ele.type == "G Unit"){
+                      return (
+                        <CardContainer key={i} className="inter-var">
+                          <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                          <CardItem translateZ="100" className="w-full">
+                            <Image
+                                src={ele.image_url[0]}
+                                height="300"
+                                width="300"
+                                className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                                alt="thumbnail"
+                                onMouseEnter={() => handleMouseEnter(ele)}
+                                onMouseLeave={handleMouseLeave}
+                                onMouseMove={handleMouseMove}
+                                onClick={() => handleAddCard(ele)}
+                              />
+                            </CardItem>
+                          </CardBody>
+                        </CardContainer>
+                      )
+                    }
+                  })
               }
             </div>
           </div>
