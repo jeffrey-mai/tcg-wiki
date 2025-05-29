@@ -20,10 +20,11 @@ export default function Page() {
   const [dropDownStatus, setDropDownStatus] = useState(false);
   const [cards, setCards] = useState<Cards[]>();
   const [currentDeck, setCurrentDeck] = useState<{ name: string, list: Cards[] }>({ name: "", list: [] });
-  const [decks, setDecks] = useState({});
+  const [decks, setDecks] = useState<{ [key: string]: Cards[]}>({});
   const [newDeckName, setNewDeckName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("main");
+  const [refetch, setRefetch] = useState(false);
 
   const handleMouseEnter = (card: Cards) => {
     setHoveredCard(card);
@@ -48,8 +49,8 @@ export default function Page() {
     let left = e.clientX + offsetX;
     let top = e.clientY + offsetY;
 
-    if (left + popupWidth > vw) left = e.clientX - popupWidth - offsetX; // stops clipping
-    if (top + popupHeight > vh) top = e.clientY - popupHeight - offsetY;
+    if(left + popupWidth > vw) left = e.clientX - popupWidth - offsetX; // stops clipping
+    if(top + popupHeight > vh) top = e.clientY - popupHeight - offsetY;
 
     setPopupPos({ top, left });
   }
@@ -75,6 +76,28 @@ export default function Page() {
       list: [...(prev.list || []), card]
     }))
   }
+
+  const handleChooseDeck = (deck: string) => {
+    setCurrentDeck({
+      name: deck,
+      list: decks[deck]
+    })
+  }
+
+  const handleSaveDeck = async () => {
+    try {
+      const res = await fetch("/api/users", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email, deck: currentDeck, action: "handleSaveDeck" })
+      });
+      const data = await res.json();
+      console.log(data);
+      setRefetch(!refetch);
+    } catch (error) {
+      console.error("Failed to create new deck:", error);
+    }
+  }
   
   const handleSaveDeckName = async () => {
     setIsEditing(false);
@@ -86,6 +109,17 @@ export default function Page() {
           body: JSON.stringify({ currentDeck: currentDeck.name, newDeckName: newDeckName, email: session?.user?.email })
         });
         const data = await res.json();
+        setDecks(prev => {
+          const temp = prev[currentDeck.name];
+          const newDecks = { ...prev };
+          delete newDecks[currentDeck.name];
+          newDecks[newDeckName] = temp;
+          return newDecks;
+        })
+        setCurrentDeck((prev) => ({
+          ...prev,
+          name: newDeckName
+        }))
         return data;
       } catch (error) {
         console.error("Failed to change deck name:", error);
@@ -100,11 +134,15 @@ export default function Page() {
       const res = await fetch("/api/users", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email })
+        body: JSON.stringify({ email: session?.user?.email, action: "handleCreateDeck" })
       });
       const data = await res.json();
-      console.log(data);
-      return data;
+      const decks = data.deckList.rows[0].decks.cardfight_vanguard;
+      setDecks(decks);
+      setCurrentDeck(() => ({
+        name: data.newDeck,
+        list: [] as Cards[]
+      }));
     } catch (error) {
       console.error("Failed to create new deck:", error);
     }
@@ -118,7 +156,11 @@ export default function Page() {
         body: JSON.stringify({ email: session?.user?.email, deckName: currentDeck.name })
       });
       const data = await res.json();
-      return data;
+      setDecks(data.rows[0].decks.cardfight_vanguard);
+      setCurrentDeck(() => ({
+        name: Object.keys(data.rows[0].decks.cardfight_vanguard)[0],
+        list: Object.values(data.rows[0].decks.cardfight_vanguard)[0] as Cards[]
+      }));
     } catch (error) {
       console.error("Failed to create new deck:", error);
     }
@@ -145,11 +187,10 @@ export default function Page() {
           const res = await fetch(`/api/users/${session.user?.email}`);
           const data = await res.json();
           setDecks(data[0].decks.cardfight_vanguard);
-          setCurrentDeck((prev) => {
-            prev.name = Object.keys(data[0].decks.cardfight_vanguard)[0];
-            prev.list = data[0].decks.cardfight_vanguard[0];
-            return prev;
-          });
+          setCurrentDeck(() => ({
+            name: Object.keys(data[0].decks.cardfight_vanguard)[0],
+            list: Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[]
+          }));
         } catch (error) {
           console.error("Failed to fetch cards:", error);
         }
@@ -157,7 +198,7 @@ export default function Page() {
     }
 
     fetchUserDecks();
-  }, [session, isEditing]);
+  }, [session, isEditing, refetch]);
 
   useEffect(() => {
     if(isEditing && inputRef.current) {
@@ -205,41 +246,50 @@ export default function Page() {
           }
         </div>
       )}
-      <div className="flex justify-between items-center w-7/10 pl-[24px] pr-6">
-        <div className="flex items-center w-[97%] ml-8">
-          <PlaceholdersAndVanishInput
-            placeholders={["Search for any card!"]}
-            onChange={handleInputChange}
-            onSubmit={onSubmit}
+      <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center w-7/10 pl-[24px] pr-6">
+          <div className="flex items-center w-[97%] ml-8">
+            <PlaceholdersAndVanishInput
+              placeholders={["Search for any card!"]}
+              onChange={handleInputChange}
+              onSubmit={onSubmit}
+            />
+            {
+              searchResult !== "" ? 
+                <div className="flex items-center justify-between w-full">
+                  <p className="text-white whitespace-nowrap overflow-hidden">
+                    Current search: {searchResult}
+                  </p>
+                  <p 
+                    className="px-1 mr-2 text-lg text-zinc-400 cursor-pointer hover:text-white transition-colors duration-300"
+                    onClick={handleCancelSearch}
+                  >
+                    x
+                  </p>
+                </div>
+                : 
+                <></>
+            }
+          </div>
+          <Image
+            src={"https://cdn-icons-png.flaticon.com/512/107/107799.png"}
+            className="invert cursor-pointer"
+            width="20"
+            height="20"
+            alt="filter logo"
           />
-          {
-            searchResult !== "" ? 
-              <div className="flex items-center justify-between w-full">
-                <p className="text-white whitespace-nowrap overflow-hidden">
-                  Current search: {searchResult}
-                </p>
-                <p 
-                  className="px-1 mr-2 text-lg text-zinc-400 cursor-pointer hover:text-white transition-colors duration-300"
-                  onClick={handleCancelSearch}
-                >
-                  x
-                </p>
-              </div>
-              : 
-              <></>
-          }
         </div>
-        <Image
-          src={"https://cdn-icons-png.flaticon.com/512/107/107799.png"}
-          className="invert cursor-pointer"
-          width="20"
-          height="20"
-          alt="filter logo"
-        />
+        <button 
+          className="mr-[24px] bg-white text-black hover:invert border-2 border-black cursor-pointer rounded-xl px-[16px] py-[4px] transition-colors ease-in-out" 
+          type="submit"
+          onClick={handleSaveDeck}
+        >
+          Save
+        </button>
       </div>
       <div className="h-[85vh] flex justify-center items-center mt-[10px] mr-[24px] pb-[24px]">
         <div className="grid grid-cols-5 h-full w-7/10 mr-5 ml-[24px] px-[10px] pt-1 overflow-y-auto">
-          { 
+          {
             cards ?
               cards.map((ele, i) => {
                 return (
@@ -301,8 +351,16 @@ export default function Page() {
                     <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
                       <ul className="py-1 text-gray-700">
                         {
-                          Object.keys(decks).map((decks, i) => {
-                            return <li key={i} className="px-4 py-2 hover:bg-gray-100 cursor-pointer">{decks}</li>
+                          Object.keys(decks).map((deck, i) => {
+                            return (
+                              <li 
+                                key={i} 
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                onMouseDown={() => handleChooseDeck(deck)}
+                              >
+                                {deck}
+                              </li>
+                            )
                           })
                         }
                       </ul>
@@ -425,7 +483,7 @@ export default function Page() {
                                 onMouseEnter={() => handleMouseEnter(ele)}
                                 onMouseLeave={handleMouseLeave}
                                 onMouseMove={handleMouseMove}
-                                onClick={() => handleAddCard(ele)}
+                                onClick={() => null}
                               />
                             </CardItem>
                           </CardBody>
