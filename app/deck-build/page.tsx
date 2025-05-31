@@ -2,7 +2,7 @@
 
 import { CardBody, CardContainer, CardItem } from "@/components/ui/3d-card";
 import { PlaceholdersAndVanishInput } from "@/components/ui/placeholders-and-vanish-input";
-import { Cards } from "@/types";
+import { Cards, DeckInfo } from "@/types";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -19,11 +19,11 @@ export default function Page() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropDownStatus, setDropDownStatus] = useState(false);
   const [cards, setCards] = useState<Cards[]>();
-  const [currentDeck, setCurrentDeck] = useState<{ name: string, list: Cards[] }>({ name: "", list: [] });
+  const [currentDeck, setCurrentDeck] = useState<{ name: string, list: Cards[], info: DeckInfo }>({ name: "", list: [], info: { version: "Standard", nation: "null", total_cards: 0, grade_4: 0, grade_3: 0, grade_2: 0, grade_1: 0, grade_0: 0, rideDeck: [], dupes: {} }});
   const [decks, setDecks] = useState<{ [key: string]: Cards[]}>({});
   const [newDeckName, setNewDeckName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState("main");
+  const [activeTab, setActiveTab] = useState("ride");
   const [refetch, setRefetch] = useState(false);
 
   const handleMouseEnter = (card: Cards) => {
@@ -71,17 +71,71 @@ export default function Page() {
   };
 
   const handleAddCard = (card: Cards) => {
-    setCurrentDeck((prev) => ({
-      ...prev,
-      list: [...(prev.list || []), card]
-    }))
+    setCurrentDeck((prev) => {
+      if(prev.info.total_cards >= 50) return prev;
+      const temp = { ...prev };
+
+      if(activeTab === "ride"){
+        if(temp.info.rideDeck.length < 4){
+          temp.info.rideDeck = [...(temp.info.rideDeck || []), card];
+          temp.info.total_cards += 1;
+          switch (card.grade) {
+          case 4: temp.info.grade_4 += 1; break;
+          case 3: temp.info.grade_3 += 1; break;
+          case 2: temp.info.grade_2 += 1; break;
+          case 1: temp.info.grade_1 += 1; break;
+          case 0: temp.info.grade_0 += 1; break;
+          }
+        }
+        return temp;
+      }
+
+      if(prev.info.dupes[card.name] !== 4){
+        temp.list = [...(temp.list || []), card];
+        temp.info.total_cards += 1;
+        switch (card.grade) {
+        case 4: temp.info.grade_4 += 1; break;
+        case 3: temp.info.grade_3 += 1; break;
+        case 2: temp.info.grade_2 += 1; break;
+        case 1: temp.info.grade_1 += 1; break;
+        case 0: temp.info.grade_0 += 1; break;
+        }
+  
+        if(temp.info.dupes[card.name]) temp.info.dupes[card.name] += 1;
+        else temp.info.dupes[card.name] = 1;
+        return temp;
+      }
+      return prev;
+    })
+  }
+
+  const handleRemoveCard = (card: Cards) => {
+    setCurrentDeck((prev) => {
+      const temp = { ...prev };
+      if(activeTab !== "ride") temp.list = temp.list.filter(ele => ele !== card);
+      else temp.info.rideDeck = temp.info.rideDeck.filter(ele => ele !== card);
+      temp.info.total_cards -= 1;
+      switch (card.grade) {
+        case 4: temp.info.grade_4 -= 1; break;
+        case 3: temp.info.grade_3 -= 1; break;
+        case 2: temp.info.grade_2 -= 1; break;
+        case 1: temp.info.grade_1 -= 1; break;
+        case 0: temp.info.grade_0 -= 1; break;
+      }
+
+      if(temp.info.dupes[card.name] > 1) temp.info.dupes[card.name] -= 1;
+      else delete temp.info.dupes[card.name];
+
+      return temp;
+    })
   }
 
   const handleChooseDeck = (deck: string) => {
-    setCurrentDeck({
+    setCurrentDeck(prev => ({
+      ...prev,
       name: deck,
       list: decks[deck]
-    })
+    }))
   }
 
   const handleSaveDeck = async () => {
@@ -139,7 +193,8 @@ export default function Page() {
       const data = await res.json();
       const decks = data.deckList.rows[0].decks.cardfight_vanguard;
       setDecks(decks);
-      setCurrentDeck(() => ({
+      setCurrentDeck(prev => ({
+        ...prev,
         name: data.newDeck,
         list: [] as Cards[]
       }));
@@ -157,7 +212,8 @@ export default function Page() {
       });
       const data = await res.json();
       setDecks(data.rows[0].decks.cardfight_vanguard);
-      setCurrentDeck(() => ({
+      setCurrentDeck(prev => ({
+        ...prev,
         name: Object.keys(data.rows[0].decks.cardfight_vanguard)[0],
         list: Object.values(data.rows[0].decks.cardfight_vanguard)[0] as Cards[]
       }));
@@ -176,7 +232,7 @@ export default function Page() {
         console.error("Failed to fetch cards:", error);
       }
     }
-
+    
     fetchCards();
   }, []);
 
@@ -187,10 +243,34 @@ export default function Page() {
           const res = await fetch(`/api/users/${session.user?.email}`);
           const data = await res.json();
           setDecks(data[0].decks.cardfight_vanguard);
-          setCurrentDeck(() => ({
-            name: Object.keys(data[0].decks.cardfight_vanguard)[0],
-            list: Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[]
-          }));
+          setCurrentDeck(prev => {
+            const temp = { ...prev };
+            temp.name = Object.keys(data[0].decks.cardfight_vanguard)[0];
+            temp.list = Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[];
+            for(const card of Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[]){
+              temp.info.total_cards += 1;
+              switch(card.grade){
+                case 4:
+                  temp.info.grade_4 += 1;
+                  break;
+                case 3:
+                  temp.info.grade_3 += 1;
+                  break;
+                case 2:
+                  temp.info.grade_2 += 1;
+                  break;
+                case 1:
+                  temp.info.grade_1 += 1;
+                  break;
+                case 0:
+                  temp.info.grade_0 += 1;
+                  break;
+              }
+              if(temp.info.dupes[card.name]) temp.info.dupes[card.name] += 1;
+              else temp.info.dupes[card.name] = 1;
+            }
+            return temp;
+          });
         } catch (error) {
           console.error("Failed to fetch cards:", error);
         }
@@ -300,7 +380,7 @@ export default function Page() {
                           src={ele.image_url[0]}
                           height="300"
                           width="300"
-                          className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                          className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl hover:cursor-pointer"
                           alt="thumbnail"
                           onMouseEnter={() => handleMouseEnter(ele)}
                           onMouseLeave={handleMouseLeave}
@@ -390,7 +470,7 @@ export default function Page() {
                       width="20"
                       alt="deck size"
                     />
-                    <p>10 / 50</p>
+                    <p>{currentDeck.info.total_cards} / 50</p>
                   </div>
                   <div className="flex mr-5">
                     <Image
@@ -400,7 +480,7 @@ export default function Page() {
                       width="20"
                       alt="deck nation"
                     />
-                    <p>(Nation)</p>
+                    <p>{currentDeck.info.nation}</p>
                   </div>
                   <div className="flex">
                     <Image
@@ -410,17 +490,17 @@ export default function Page() {
                       width="20"
                       alt="deck type"
                     />
-                    <p>(Standard)</p>
+                    <p>{currentDeck.info.version}</p>
                   </div>
                 </div>
                 <div className="flex justify-center items-center mt-2">
                   <div className="mr-8">
-                    <p>Grade 3: 0</p>
-                    <p>Grade 2: 0</p>
+                    <p>Grade 3: {currentDeck.info.grade_3}</p>
+                    <p>Grade 2: {currentDeck.info.grade_2}</p>
                   </div>
                   <div>
-                    <p>Grade 1: 0</p>
-                    <p>Grade 0: 0</p>
+                    <p>Grade 1: {currentDeck.info.grade_1}</p>
+                    <p>Grade 0: {currentDeck.info.grade_0}</p>
                   </div>
                 </div>
               </div>
@@ -429,7 +509,13 @@ export default function Page() {
           <div className="flex flex-col min-h-[75%] max-h-[75%] p-">
             <div className="flex">
               <h2
-                className={`${activeTab === "main" ? "border-b-transparent border-white bg-cyan-200 text-black" : "hover:bg-slate-800"} border border-l-0 py-1 px-3 z-10 hover:cursor-pointer transition-colors ease-in-out rounded-tl-lg`}
+                className={`${activeTab === "ride" ? "border-b-transparent border-white bg-cyan-200 text-black" : "hover:bg-slate-800"} border border-l-0 py-1 px-3 z-10 hover:cursor-pointer transition-colors ease-in-out rounded-tl-lg`}
+                onClick={() => setActiveTab("ride")}
+              >
+                Ride Deck
+              </h2>
+              <h2
+                className={`${activeTab === "main" ? "border-b-transparent border-white bg-cyan-200 text-black" : "hover:bg-slate-800"} border border-l-0 py-1 px-3 z-10 hover:cursor-pointer transition-colors ease-in-out`}
                 onClick={() => setActiveTab("main")}
               >
                 Main Deck
@@ -443,30 +529,59 @@ export default function Page() {
             </div>
             <div className="-mt-px grid grid-cols-3 h-full w-full pt-1 border-t-1 border-white rounded-b-lg overflow-y-auto overflow-x-hidden">
               {
-                activeTab === "main" ? 
-                  currentDeck.list?.map((ele, i) => {
-                    if(ele.type !== "G Unit"){
-                      return (
-                        <CardContainer key={i} className="inter-var">
-                          <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
-                          <CardItem translateZ="100" className="w-full">
-                            <Image
-                                src={ele.image_url[0]}
-                                height="300"
-                                width="300"
-                                className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
-                                alt="thumbnail"
-                                onMouseEnter={() => handleMouseEnter(ele)}
-                                onMouseLeave={handleMouseLeave}
-                                onMouseMove={handleMouseMove}
-                                onClick={() => null}
-                              />
-                            </CardItem>
-                          </CardBody>
-                        </CardContainer>
-                      )
-                    }
+                activeTab === "ride" ? 
+                  currentDeck.info.rideDeck.map((ele, i) => {
+                    return (
+                      <CardContainer key={i} className="inter-var">
+                        <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                        <CardItem translateZ="100" className="w-full">
+                          <Image
+                              src={ele.image_url[0]}
+                              height="300"
+                              width="300"
+                              className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl hover:cursor-pointer"
+                              alt="thumbnail"
+                              onMouseEnter={() => handleMouseEnter(ele)}
+                              onMouseLeave={handleMouseLeave}
+                              onMouseMove={handleMouseMove}
+                              onClick={() => {
+                                handleRemoveCard(ele)
+                                handleMouseLeave();
+                              }}
+                            />
+                          </CardItem>
+                        </CardBody>
+                      </CardContainer>
+                    )
                   })
+                :
+                  activeTab === "main" ? 
+                    currentDeck.list?.map((ele, i) => {
+                      if(ele.type !== "G Unit"){
+                        return (
+                          <CardContainer key={i} className="inter-var">
+                            <CardBody className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black w-auto h-auto rounded-xl p-6">
+                            <CardItem translateZ="100" className="w-full">
+                              <Image
+                                  src={ele.image_url[0]}
+                                  height="300"
+                                  width="300"
+                                  className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl hover:cursor-pointer"
+                                  alt="thumbnail"
+                                  onMouseEnter={() => handleMouseEnter(ele)}
+                                  onMouseLeave={handleMouseLeave}
+                                  onMouseMove={handleMouseMove}
+                                  onClick={() => {
+                                    handleRemoveCard(ele)
+                                    handleMouseLeave();
+                                  }}
+                                />
+                              </CardItem>
+                            </CardBody>
+                          </CardContainer>
+                        )
+                      }
+                    })
                 :
                   currentDeck.list?.map((ele, i) => {
                     if(ele.type == "G Unit"){
@@ -478,12 +593,15 @@ export default function Page() {
                                 src={ele.image_url[0]}
                                 height="300"
                                 width="300"
-                                className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl"
+                                className="w-auto h-auto object-cover rounded-xl group-hover/card:shadow-xl hover:cursor-pointer"
                                 alt="thumbnail"
                                 onMouseEnter={() => handleMouseEnter(ele)}
                                 onMouseLeave={handleMouseLeave}
                                 onMouseMove={handleMouseMove}
-                                onClick={() => null}
+                                onClick={() => {
+                                  handleRemoveCard(ele)
+                                  handleMouseLeave();
+                                }}
                               />
                             </CardItem>
                           </CardBody>

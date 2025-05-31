@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       "i.pinimg.com",
     ],
   },
+  reactStrictMode: false,
 };
 
 export default nextConfig;

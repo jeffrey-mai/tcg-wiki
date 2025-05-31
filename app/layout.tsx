@@ -26,12 +26,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <SessionProvider>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col justify-center items-center`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col justify-center items-center`}>
+        <SessionProvider refetchOnWindowFocus={false}>
           <NavBar />
           {children}
-        </body>
-      </SessionProvider>
+        </SessionProvider>
+      </body>
     </html>
   );
 }
