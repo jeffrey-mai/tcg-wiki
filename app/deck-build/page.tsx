@@ -20,7 +20,7 @@ export default function Page() {
   const [dropDownStatus, setDropDownStatus] = useState(false);
   const [cards, setCards] = useState<Cards[]>();
   const [currentDeck, setCurrentDeck] = useState<{ name: string, list: Cards[], info: DeckInfo }>({ name: "", list: [], info: { version: "Standard", nation: "null", total_cards: 0, grade_4: 0, grade_3: 0, grade_2: 0, grade_1: 0, grade_0: 0, rideDeck: [], dupes: {} }});
-  const [decks, setDecks] = useState<{ [key: string]: Cards[]}>({});
+  const [decks, setDecks] = useState<{ [key: string]: { list: Cards[], rideDeck: Cards[], extraDeck: Cards[] }}>({});
   const [newDeckName, setNewDeckName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("ride");
@@ -75,38 +75,40 @@ export default function Page() {
       if(prev.info.total_cards >= 50) return prev;
       const temp = { ...prev };
 
-      if(activeTab === "ride"){
-        if(temp.info.rideDeck.length < 4){
+      if(activeTab === "ride" && card.type !== "G Unit"){
+        if(temp.info.rideDeck.length < 4 && !temp.info.rideDeck.some(ele => ele.grade === card.grade)){
           temp.info.rideDeck = [...(temp.info.rideDeck || []), card];
           temp.info.total_cards += 1;
           switch (card.grade) {
-          case 4: temp.info.grade_4 += 1; break;
-          case 3: temp.info.grade_3 += 1; break;
-          case 2: temp.info.grade_2 += 1; break;
-          case 1: temp.info.grade_1 += 1; break;
-          case 0: temp.info.grade_0 += 1; break;
+            case 4: temp.info.grade_4 += 1; break;
+            case 3: temp.info.grade_3 += 1; break;
+            case 2: temp.info.grade_2 += 1; break;
+            case 1: temp.info.grade_1 += 1; break;
+            case 0: temp.info.grade_0 += 1; break;
           }
         }
+        temp.info.rideDeck.sort((a,b) => b.grade-a.grade);
         return temp;
       }
 
       if(prev.info.dupes[card.name] !== 4){
         temp.list = [...(temp.list || []), card];
-        temp.info.total_cards += 1;
-        switch (card.grade) {
-        case 4: temp.info.grade_4 += 1; break;
-        case 3: temp.info.grade_3 += 1; break;
-        case 2: temp.info.grade_2 += 1; break;
-        case 1: temp.info.grade_1 += 1; break;
-        case 0: temp.info.grade_0 += 1; break;
+        if(card.type !== "G Unit"){
+          temp.info.total_cards += 1;
+          switch (card.grade) {
+            case 4: temp.info.grade_4 += 1; break;
+            case 3: temp.info.grade_3 += 1; break;
+            case 2: temp.info.grade_2 += 1; break;
+            case 1: temp.info.grade_1 += 1; break;
+            case 0: temp.info.grade_0 += 1; break;
+          }
         }
-  
-        if(temp.info.dupes[card.name]) temp.info.dupes[card.name] += 1;
-        else temp.info.dupes[card.name] = 1;
+        temp.info.dupes[card.name] = (temp.info.dupes[card.name] + 1) || 1;
+        temp.list.sort((a,b) => b.grade-a.grade);
         return temp;
       }
       return prev;
-    })
+    });
   }
 
   const handleRemoveCard = (card: Cards) => {
@@ -130,12 +132,47 @@ export default function Page() {
     })
   }
 
-  const handleChooseDeck = (deck: string) => {
-    setCurrentDeck(prev => ({
-      ...prev,
-      name: deck,
-      list: decks[deck]
-    }))
+  const handleChooseDeck = (deckName: string) => {
+    setCurrentDeck(prev => {
+      const temp = { ...prev };
+      temp.name = deckName;
+      temp.info.rideDeck = decks[deckName].rideDeck;
+      temp.list = decks[deckName].list;
+      temp.info.total_cards = 0;
+      temp.info.grade_4 = 0;
+      temp.info.grade_3 = 0;
+      temp.info.grade_2 = 0;
+      temp.info.grade_1 = 0;
+      temp.info.grade_0 = 0;
+      temp.info.dupes = {};
+      
+      for(const card of temp.info.rideDeck){
+        temp.info.total_cards += 1;
+        switch(card.grade){
+          case 4: temp.info.grade_4 += 1; break;
+          case 3: temp.info.grade_3 += 1; break;
+          case 2: temp.info.grade_2 += 1; break;
+          case 1: temp.info.grade_1 += 1; break;
+          case 0: temp.info.grade_0 += 1; break;
+        }
+        temp.info.dupes[card.name] = (temp.info.dupes[card.name] + 1) || 1;
+      }
+
+      for(const card of temp.list){
+        temp.info.total_cards += 1;
+        switch(card.grade){
+          case 4: temp.info.grade_4 += 1; break;
+          case 3: temp.info.grade_3 += 1; break;
+          case 2: temp.info.grade_2 += 1; break;
+          case 1: temp.info.grade_1 += 1; break;
+          case 0: temp.info.grade_0 += 1; break;
+        }
+        temp.info.dupes[card.name] = (temp.info.dupes[card.name] + 1) || 1;
+      }
+      
+      console.log(temp);
+      return temp;
+    });
   }
 
   const handleSaveDeck = async () => {
@@ -149,7 +186,7 @@ export default function Page() {
       console.log(data);
       setRefetch(!refetch);
     } catch (error) {
-      console.error("Failed to create new deck:", error);
+      console.error("Failed to save deck:", error);
     }
   }
   
@@ -193,11 +230,21 @@ export default function Page() {
       const data = await res.json();
       const decks = data.deckList.rows[0].decks.cardfight_vanguard;
       setDecks(decks);
-      setCurrentDeck(prev => ({
-        ...prev,
+      setCurrentDeck({
         name: data.newDeck,
-        list: [] as Cards[]
-      }));
+        list: [] as Cards[],
+        info: {
+          version: "Standard",
+          nation: "null",
+          total_cards: 0,
+          grade_4: 0, grade_3:
+          0, grade_2: 0,
+          grade_1: 0,
+          grade_0: 0,
+          rideDeck: [],
+          dupes: {}
+        }
+      });
     } catch (error) {
       console.error("Failed to create new deck:", error);
     }
@@ -245,29 +292,40 @@ export default function Page() {
           setDecks(data[0].decks.cardfight_vanguard);
           setCurrentDeck(prev => {
             const temp = { ...prev };
+            const decks: { list: Cards[], rideDeck: Cards[], extraDeck: Cards[] }[] = Object.values(data[0].decks.cardfight_vanguard);
             temp.name = Object.keys(data[0].decks.cardfight_vanguard)[0];
-            temp.list = Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[];
-            for(const card of Object.values(data[0].decks.cardfight_vanguard)[0] as Cards[]){
+            temp.info.rideDeck = decks[0].rideDeck;
+            temp.list = decks[0].list;
+            temp.info.total_cards = 0;
+            temp.info.grade_4 = 0;
+            temp.info.grade_3 = 0;
+            temp.info.grade_2 = 0;
+            temp.info.grade_1 = 0;
+            temp.info.grade_0 = 0;
+            temp.info.dupes = {};
+            
+            for(const card of temp.info.rideDeck){
               temp.info.total_cards += 1;
               switch(card.grade){
-                case 4:
-                  temp.info.grade_4 += 1;
-                  break;
-                case 3:
-                  temp.info.grade_3 += 1;
-                  break;
-                case 2:
-                  temp.info.grade_2 += 1;
-                  break;
-                case 1:
-                  temp.info.grade_1 += 1;
-                  break;
-                case 0:
-                  temp.info.grade_0 += 1;
-                  break;
+                case 4: temp.info.grade_4 += 1; break;
+                case 3: temp.info.grade_3 += 1; break;
+                case 2: temp.info.grade_2 += 1; break;
+                case 1: temp.info.grade_1 += 1; break;
+                case 0: temp.info.grade_0 += 1; break;
               }
-              if(temp.info.dupes[card.name]) temp.info.dupes[card.name] += 1;
-              else temp.info.dupes[card.name] = 1;
+              temp.info.dupes[card.name] = (temp.info.dupes[card.name] + 1) || 1;
+            }
+
+            for(const card of temp.list){
+              temp.info.total_cards += 1;
+              switch(card.grade){
+                case 4: temp.info.grade_4 += 1; break;
+                case 3: temp.info.grade_3 += 1; break;
+                case 2: temp.info.grade_2 += 1; break;
+                case 1: temp.info.grade_1 += 1; break;
+                case 0: temp.info.grade_0 += 1; break;
+              }
+              temp.info.dupes[card.name] = (temp.info.dupes[card.name] + 1) || 1;
             }
             return temp;
           });
@@ -431,14 +489,14 @@ export default function Page() {
                     <div className="absolute mt-[40px] w-[24%] bg-white border border-t-slate-400 rounded-md rounded-t-none shadow-lg z-20">
                       <ul className="py-1 text-gray-700">
                         {
-                          Object.keys(decks).map((deck, i) => {
+                          Object.keys(decks).map((deckName, i) => {
                             return (
                               <li 
                                 key={i} 
                                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                onMouseDown={() => handleChooseDeck(deck)}
+                                onMouseDown={() => handleChooseDeck(deckName)}
                               >
-                                {deck}
+                                {deckName}
                               </li>
                             )
                           })
@@ -454,7 +512,7 @@ export default function Page() {
             </div>
             <div className="flex justify-center items-center h-full">
               <Image
-                src="https://i.pinimg.com/736x/08/ba/26/08ba262620529e7917d9fd9d3dfd3186.jpg"
+                src={currentDeck.info.rideDeck.length ? currentDeck.info.rideDeck[0].image_url[0] : "https://i.imgur.com/vJmy5qL.png"}
                 className="mr-5"
                 height="100"
                 width="60"

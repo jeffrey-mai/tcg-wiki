@@ -28,9 +28,9 @@ export async function POST(req: NextRequest) {
       let i = 1;
       if(decks.cardfight_vanguard["New Deck"]){
         while(decks.cardfight_vanguard[`New Deck ${i}`]) i++;
-        decks.cardfight_vanguard[`New Deck ${i}`] = [];
+        decks.cardfight_vanguard[`New Deck ${i}`] = { "rideDeck": [], "list": [], "extraDeck": [] };
       } else {
-        decks.cardfight_vanguard["New Deck"] = [];
+        decks.cardfight_vanguard["New Deck"] = { "rideDeck": [], "list": [], "extraDeck": [] };
       }
       
       await pool.query(`UPDATE users SET decks = $1 WHERE email = $2`, [decks, email]);
@@ -47,10 +47,10 @@ export async function POST(req: NextRequest) {
     try {
       const { rows } = await pool.query(`SELECT decks FROM users WHERE email = $1`, [email]);
       const decks = rows[0].decks;
-      decks.cardfight_vanguard[deck.name] = deck.list;
+      decks.cardfight_vanguard[deck.name] = { rideDeck: deck.info.rideDeck, list: deck.list, extraDeck: [] };
       
       await pool.query(`UPDATE users SET decks = $1 WHERE email = $2`, [decks, email]);
-      return NextResponse.json({ message: 'New deck created successfully' });
+      return NextResponse.json({ message: 'Deck saved successfully' });
     } catch (error) {
       return NextResponse.json({ error: error }, { status: 500 });
     }

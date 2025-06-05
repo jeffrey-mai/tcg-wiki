@@ -20,8 +20,8 @@ const NavBarClient = ({ session }: { session: Session | null }) => {
         alt="logo"
       />
       <div className="flex w-[auto] text-neutral-300">
-        <button className="NavBarButton mr-1" onClick={() => pathname !== "/deck-build" ? router.push("/deck-build") : window.location.reload()}>Decks</button>
-        <button className="NavBarButton mr-1" onClick={() => pathname !== "/cards" ? router.push("/cards") : window.location.reload()}>Cards</button>
+        <button className="NavBarButton mr-1" onClick={() => pathname !== "/deck-build" ? router.push("/deck-build") : window.location.reload()}>Build</button>
+        <button className="NavBarButton mr-1" onClick={() => pathname !== "/cards" ? router.push("/cards") : window.location.reload()}>Decks</button>
         <button className="NavBarButton">Simulation</button>
       </div>
       <div className="flex justify-end w-auto">
